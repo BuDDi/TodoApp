@@ -6,12 +6,15 @@
     <string name="action_new">New</string>
     <string name="action_edit">Edit</string>
     <string name="action_login">Login</string>
+    <string name="action_sort_prio_first">Sort Prio + Date</string>
+    <string name="action_sort_date_first">Sort Date + Prio</string>
     <string name="prio_high">High</string>
     <string name="prio_normal">Normal</string>
     <string name="prio_low">Low</string>
     <string name="btn_ok">OK</string>
     <string name="btn_login">Login</string>
     <string name="btn_cancel">Cancel</string>
+    <string name="btn_delete">Delete</string>
     <string name="hint_name">Name</string>
     <string name="hint_desc">Description</string>
     <string name="hint_email">user@domain.com</string>

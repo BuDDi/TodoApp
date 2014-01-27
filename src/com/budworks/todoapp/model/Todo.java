@@ -165,7 +165,9 @@ public class Todo implements Serializable {
 	// Will be used by the ArrayAdapter in the ListView
 	@Override
 	public String toString() {
-		return name;
+		return "{Todo id:" + this.id + " userId:" + this.userId + " name:\""
+				+ this.name + "\" \"" + this.description + "\" done:" + this.done
+				+ " prio:\"" + this.priority + "\"}";
 	}
 
 	public Todo updateFrom(Todo item) {

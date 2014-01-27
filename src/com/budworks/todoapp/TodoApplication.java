@@ -83,6 +83,8 @@ public class TodoApplication extends Application {
 				remoteServiceAvailable = result;
 				if (!remoteServiceAvailable) {
 					Log.i(LOG_TAG, "remote service is not available!");
+					initialized = true;
+					fireChange(Constants.ON_CHANGE_INITIALIZED);
 				} else {
 					// try's to sync on startup; the remoteUser may not have been set
 					// yet

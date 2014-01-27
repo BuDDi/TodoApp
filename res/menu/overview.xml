@@ -1,0 +1,26 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:todoapp="http://schemas.android.com/apk/res-auto" >
+
+    <item
+        android:id="@+id/action_new"
+        android:icon="@drawable/ic_action_new"
+        android:title="@string/action_new"/>
+    <!-- todoapp:showAsAction="ifRoom" -->
+
+    <item
+        android:id="@+id/action_login"
+        android:icon="@drawable/ic_action_person"
+        android:title="@string/action_login"/>
+    <!-- todoapp:showAsAction="ifRoom" -->
+    <item
+        android:id="@+id/action_sort_date_first"
+        android:icon="@drawable/ic_action_sort_by_size"
+        android:title="@string/action_sort_date_first"/>
+    <!-- todoapp:showAsAction="ifRoom" -->
+    <item
+        android:id="@+id/action_sort_prio_first"
+        android:icon="@drawable/ic_action_sort_by_size"
+        android:title="@string/action_sort_prio_first"/>
+    <!-- todoapp:showAsAction="ifRoom" -->
+
+</menu>

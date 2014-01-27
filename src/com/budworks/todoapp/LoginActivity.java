@@ -5,6 +5,7 @@ import java.util.regex.Pattern;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
@@ -58,6 +59,7 @@ public class LoginActivity extends Activity implements OnKeyListener {
 				startOverviewActivity();
 			}
 		});
+		updateWarning();
 	}
 
 	@Override
@@ -73,25 +75,12 @@ public class LoginActivity extends Activity implements OnKeyListener {
 	}
 
 	private void updateWarning() {
-		EditText emailField = (EditText) findViewById(R.id.txt_email);
-		EditText passwordField = (EditText) findViewById(R.id.txt_pwd);
-		String email = emailField.getText().toString();
-		String password = passwordField.getText().toString();
-		Matcher emailMatcher = EMAIL_PATTERN.matcher(email);
-		Matcher pwdMatcher = PASSWORD_PATTERN.matcher(password);
-		if (!emailMatcher.matches()) {
-			// only change warning message when there is no message yet
-			if (warningMsg == null || pwdMatcher.matches()) {
-				warningMsg = "No valid email address entered";
-			}
-		} else if (!pwdMatcher.matches()) {
-			// only change warning message when there is no message yet
-			if (warningMsg == null || emailMatcher.matches()) {
-				warningMsg = "No valid password:\nOnly 6 digits allowed!";
-			}
-		} else {
-			warningMsg = null;
-		}
+
+		String emailWarning = getEmailWarning();
+		String passwordWarning = getPasswordWarning();
+		warningMsg =
+				(emailWarning != null && emailWarning.length() > 0) ? emailWarning
+						: passwordWarning;
 		Button loginBtn = (Button) findViewById(R.id.btn_login);
 		loginBtn.setEnabled(warningMsg == null);
 		TextView warningLabel = (TextView) findViewById(R.id.warning_label);
@@ -100,6 +89,30 @@ public class LoginActivity extends Activity implements OnKeyListener {
 		int warningIconVisibility =
 				warningMsg != null ? ImageView.VISIBLE : ImageView.INVISIBLE;
 		warningIcon.setVisibility(warningIconVisibility);
+	}
+
+	private String getPasswordWarning() {
+		EditText passwordField = (EditText) findViewById(R.id.txt_pwd);
+		String password = passwordField.getText().toString();
+		Matcher pwdMatcher = PASSWORD_PATTERN.matcher(password);
+		if (password == null || password.length() == 0) {
+			return "No password entered";
+		} else if (!pwdMatcher.matches()) {
+			return "No valid password:\nOnly 6 digits allowed!";
+		}
+		return null;
+	}
+
+	private String getEmailWarning() {
+		EditText emailField = (EditText) findViewById(R.id.txt_email);
+		String email = emailField.getText().toString();
+		Matcher emailMatcher = EMAIL_PATTERN.matcher(email);
+		if (email == null || email.length() == 0) {
+			return "No email address entered";
+		} else if (!emailMatcher.matches()) {
+			return "No valid email address entered";
+		}
+		return null;
 	}
 
 	private void doAuthentication() {
@@ -127,7 +140,8 @@ public class LoginActivity extends Activity implements OnKeyListener {
 				dialog.show();
 				return;
 			} else {
-				// TODO show Progress Dialog
+				final ProgressDialog progressDialog =
+						ProgressDialog.show(this, "", "Loading ...");
 				new AsyncTask<User, Void, Boolean>() {
 
 					@Override
@@ -137,6 +151,7 @@ public class LoginActivity extends Activity implements OnKeyListener {
 
 					@Override
 					protected void onPostExecute(Boolean result) {
+						progressDialog.dismiss();
 						if (result) {
 							String msg = "Login successful " + user;
 							Log.i(LOG_TAG, msg);

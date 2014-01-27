@@ -1,6 +1,8 @@
 package com.budworks.todoapp;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import android.app.AlertDialog;
@@ -10,6 +12,7 @@ import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.renderscript.RenderScript.Priority;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.GestureDetector;
@@ -29,6 +32,17 @@ import com.budworks.todoapp.model.User;
 public class TodoOverviewActivity extends ListActivity implements
 		ChangeListener<TodoApplication> {
 
+	public static interface Constants {
+		public static final int SORTBY_NONE = 0;
+
+		public static final int SORTBY_DONE = 1;
+
+		public static final int SORTBY_DATE = 2;
+
+		public static final int SORTBY_PRIO = 4;
+
+	}
+
 	public static final String ARG_DELEGATE_CLASS = "businessDelegateClass";
 
 	private static final String LOG_TAG = TodoOverviewActivity.class.getName();
@@ -43,16 +57,18 @@ public class TodoOverviewActivity extends ListActivity implements
 
 	private ITodoCRUDOperations todoSqliteDb;
 
+	private List<Integer> sorting = new ArrayList<Integer>();
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_main);
+		setContentView(R.layout.activity_overview);
 		// get the TodoApplication to have access to the crud services and
 		// initialization and connectivity status
 		TodoApplication app = (TodoApplication) getApplication();
 		// If the application is not yet initialized add this activity as a change
 		// listener.
-		if (!app.isInitialized()) {
+		if (!app.isInitialized() || app.getRemoteUser() == null) {
 			Log.i(LOG_TAG,
 					"Adding OverviewActivity as Changelistener cause TodoApplication is not initialized!");
 			if (app.addChangeListener(this)) {
@@ -79,6 +95,8 @@ public class TodoOverviewActivity extends ListActivity implements
 				}
 			}
 		}
+		// always sort by done status of a todo
+		sorting.add(Constants.SORTBY_DONE);
 		// after the connectivity check, because this is the launcher activity, we
 		// can load the local todos
 		List<Todo> todos = new ArrayList<Todo>();
@@ -98,6 +116,9 @@ public class TodoOverviewActivity extends ListActivity implements
 		Todo editTodo =
 				(Todo) getIntent().getSerializableExtra(
 						EditTodoActivity.KEY_EDIT_TODO);
+		Todo deleteTodo =
+				(Todo) getIntent().getSerializableExtra(
+						EditTodoActivity.KEY_DELETE_TODO);
 		// only one can be set
 		if (newTodo != null && editTodo != null) {
 			String msg = "Something went wrong: got new AND edited todo!";
@@ -110,6 +131,9 @@ public class TodoOverviewActivity extends ListActivity implements
 		} else if (editTodo != null) {
 			Log.i(LOG_TAG, "Got edited Todo ... setting new values!");
 			doUpdateItem(editTodo);
+		} else if (deleteTodo != null) {
+			Log.i(LOG_TAG, "Got Todo to delete ... !");
+			doDeleteItem(deleteTodo);
 		}
 
 		// initialize the swipe parameters used for deleting items
@@ -166,7 +190,7 @@ public class TodoOverviewActivity extends ListActivity implements
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// Inflate the menu; this adds items to the action bar if it is present.
-		getMenuInflater().inflate(R.menu.main, menu);
+		getMenuInflater().inflate(R.menu.overview, menu);
 		return true;
 	}
 
@@ -179,6 +203,20 @@ public class TodoOverviewActivity extends ListActivity implements
 			return true;
 		case R.id.action_login:
 			startLoginActivity();
+			return true;
+		case R.id.action_sort_date_first:
+			sorting.clear();
+			sorting.add(Constants.SORTBY_DONE);
+			sorting.add(Constants.SORTBY_DATE);
+			sorting.add(Constants.SORTBY_PRIO);
+			doLoadItems();
+			return true;
+		case R.id.action_sort_prio_first:
+			sorting.clear();
+			sorting.add(Constants.SORTBY_DONE);
+			sorting.add(Constants.SORTBY_PRIO);
+			sorting.add(Constants.SORTBY_DATE);
+			doLoadItems();
 			return true;
 		default:
 			return super.onOptionsItemSelected(item);
@@ -242,7 +280,6 @@ public class TodoOverviewActivity extends ListActivity implements
 							});
 			AlertDialog alert = builder.create();
 			alert.show();
-			alert.show();
 		}
 	}
 
@@ -271,6 +308,7 @@ public class TodoOverviewActivity extends ListActivity implements
 		@Override
 		public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX,
 				float velocityY) {
+			// TODO can cause NullPointerException; not yet clear why
 			if (Math.abs(e1.getY() - e2.getY()) > REL_SWIPE_MAX_OFF_PATH) {
 				return false;
 			}
@@ -323,8 +361,60 @@ public class TodoOverviewActivity extends ListActivity implements
 				TodoListAdapter adapter = (TodoListAdapter) getListAdapter();
 				adapter.clear();
 				adapter.addAll(todos);
+				applySortingOnAdapter();
 			}
+
 		}.execute();
+	}
+
+	private void applySortingOnAdapter() {
+
+		TodoListAdapter adapter = (TodoListAdapter) getListAdapter();
+		List<Todo> todos = adapter.getAllTodos();
+		// sort the todos depending on the sorting before adding it to the
+		// adapter
+		Collections.sort(todos, new Comparator<Todo>() {
+
+			@Override
+			public int compare(Todo lhs, Todo rhs) {
+				int ordinal = 0;
+				for (int i = 0; i < sorting.size(); i++) {
+					// depending on the position of a sorting flag in the list
+					// the flag has more or less influence on the sorting
+					// first elements has highest influence
+					int factor = sorting.size() - i;
+					// multiply the factor by itself so that lower sorting flags in
+					// the list cannot nullify the first sorting entry
+					factor *= factor;
+					int sortingFlag = sorting.get(i);
+					if (sortingFlag == Constants.SORTBY_DONE) {
+						ordinal +=
+								(lhs.isDone() ? factor : 0)
+										- (rhs.isDone() ? factor : 0);
+					} else if (sortingFlag == Constants.SORTBY_DATE) {
+						int value = lhs.getDate().compareTo(rhs.getDate());
+						if (value != 0) {
+							value /= Math.abs(value);
+						}
+						ordinal += value * factor;
+					} else if (sortingFlag == Constants.SORTBY_PRIO) {
+						// Priority is sorted with higher value = lower position in
+						// list
+						int nrPriorities = Priority.values().length;
+						int value =
+								(nrPriorities - lhs.getPriority().ordinal())
+										- (nrPriorities - rhs.getPriority().ordinal());
+						if (value != 0) {
+							value /= Math.abs(value);
+						}
+						ordinal += value * factor;
+					}
+				}
+				return ordinal;
+			}
+		});
+		adapter.notifyDataSetChanged();
+		// getListView().invalidate();
 	}
 
 	protected void doCreateItem(Todo todo) {
@@ -369,6 +459,7 @@ public class TodoOverviewActivity extends ListActivity implements
 				if (item != null) {
 					TodoListAdapter adapter = (TodoListAdapter) getListAdapter();
 					adapter.add(item);
+					applySortingOnAdapter();
 				} else {
 					String msg =
 							"Could not save the new todo to the local database!";
@@ -409,6 +500,7 @@ public class TodoOverviewActivity extends ListActivity implements
 				if (deleted) {
 					TodoListAdapter adapter = (TodoListAdapter) getListAdapter();
 					adapter.remove(todo);
+					applySortingOnAdapter();
 				} else {
 					Toast.makeText(
 							TodoOverviewActivity.this,
@@ -442,6 +534,17 @@ public class TodoOverviewActivity extends ListActivity implements
 					}
 				}
 				return todoSqliteDb.updateTodo(params[0]);
+			}
+
+			@Override
+			protected void onPostExecute(Todo result) {
+
+				TodoListAdapter adapter = (TodoListAdapter) getListAdapter();
+				Todo updatedAdapterTodo = adapter.get(adapter.indexOf(result));
+				updatedAdapterTodo.updateFrom(result);
+				Log.d(LOG_TAG, "Displaying updated todo: " + updatedAdapterTodo);
+				applySortingOnAdapter();
+				Log.d(LOG_TAG, "Updated todo after sorting: " + updatedAdapterTodo);
 			}
 
 		}.execute(item);

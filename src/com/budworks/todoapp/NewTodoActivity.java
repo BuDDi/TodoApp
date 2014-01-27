@@ -1,6 +1,5 @@
 package com.budworks.todoapp;
 
-import java.util.Calendar;
 import java.util.Date;
 
 import android.app.Activity;
@@ -46,7 +45,7 @@ public class NewTodoActivity extends Activity {
 				View checkedRadioBtn = findViewById(radioBtnId);
 				int selectedRadioIndex = prioGroup.indexOfChild(checkedRadioBtn);
 				Priority priority = Priority.getForOrdinal(selectedRadioIndex);
-				Date date = getDateFromDatePicket(timePicker, datePicker);
+				Date date = UtilsUI.getDateFromDatePicker(datePicker, timePicker);
 				// we don't need the user id for local stuff
 				Todo newTodo = new Todo(null, name, desc, false, priority, date);
 				// datePicker.getDayOfMonth();
@@ -70,25 +69,6 @@ public class NewTodoActivity extends Activity {
 		// add the new todo to the bundle of the main activity
 		showOveriewIntent.putExtra(KEY_NEW_TODO, todo);
 		startActivity(showOveriewIntent);
-	}
-
-	/**
-	 * 
-	 * @param datePicker
-	 * @return a java.util.Date
-	 */
-	private static Date getDateFromDatePicket(TimePicker timePicker,
-			DatePicker datePicker) {
-		int minute = timePicker.getCurrentMinute();
-		int hour = timePicker.getCurrentHour();
-		int day = datePicker.getDayOfMonth();
-		int month = datePicker.getMonth();
-		int year = datePicker.getYear();
-
-		Calendar calendar = Calendar.getInstance();
-		calendar.set(year, month, day, hour, minute);
-
-		return calendar.getTime();
 	}
 
 }
